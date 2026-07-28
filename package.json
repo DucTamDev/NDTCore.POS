@@ -24,6 +24,7 @@
   "devDependencies": {
     "@capacitor/cli": "^8.4.2",
     "@types/node": "^24.13.3",
+    "@types/w3c-web-usb": "^1.0.14",
     "@vitejs/plugin-vue": "^6.0.7",
     "@vue/test-utils": "^2.4.11",
     "@vue/tsconfig": "^0.9.1",
