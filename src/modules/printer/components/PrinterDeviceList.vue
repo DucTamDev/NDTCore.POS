@@ -1,4 +1,3 @@
-<!-- src/modules/printer/components/PrinterDeviceList.vue -->
 <template>
   <div>
     <v-btn data-test="scan-button" variant="tonal" @click="emit('scan')">Scan</v-btn>
