@@ -2717,9 +2717,6 @@ private const val ACTION_USB_PERMISSION = "com.ndtcore.pos.USB_PERMISSION"
 private const val PREFS_NAME = "ndtcore_pos_printer_config"
 private const val PREFS_KEY_CONFIG = "config"
 
-// NOTE: Task 22 modifies this class to add vendor-managed driver branching
-// (currentVendorDriver, buildVendorDriver()) once XPrinterDriver exists.
-
 @CapacitorPlugin(name = "Printer")
 class PrinterPlugin : Plugin() {
     private lateinit var manager: PrinterManager
