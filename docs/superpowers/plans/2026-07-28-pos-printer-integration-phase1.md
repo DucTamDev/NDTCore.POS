@@ -1563,9 +1563,9 @@ git commit -m "feat: add ConnectionStatusChip component"
 import { describe, it, expect } from 'vitest'
 import { mountWithVuetify } from '@/test/mount-with-vuetify'
 import PrinterDeviceList from './PrinterDeviceList.vue'
-import type { PrinterDevice } from '@/native/printer-plugin/definitions'
+import type { UsbPrinterDevice } from '@/native/printer-plugin/definitions'
 
-const devices: PrinterDevice[] = [
+const devices: UsbPrinterDevice[] = [
   { connectionType: 'usb', vendorId: 1155, productId: 22339, productName: 'XP-Q80I', serialNumber: null },
 ]
 
