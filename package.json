@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^8.4.2",
+    "@pinia/testing": "^2.0.1",
     "@types/node": "^24.13.3",
     "@types/w3c-web-usb": "^1.0.14",
     "@vitejs/plugin-vue": "^6.0.7",

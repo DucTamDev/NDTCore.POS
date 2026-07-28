@@ -14,6 +14,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: false,
     passWithNoTests: true,
+    setupFiles: ['./src/test/vitest-setup.ts'],
     server: {
       deps: {
         inline: ['vuetify'],
