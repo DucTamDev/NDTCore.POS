@@ -1,7 +1,7 @@
 # NDTCore.POS — Phase 1: Printer Integration — Design Spec
 
 Ngày: 2026-07-28
-Nguồn yêu cầu: [`docs/specs/project.md`](../../specs/project.md) — Phase 1 section
+Nguồn yêu cầu: [`docs/project.md`](../../project.md) — Phase 1 section
 
 ## 1. Mục tiêu Phase 1
 
@@ -122,7 +122,7 @@ android/
 - **Scan**: UI gọi `usePrinter().scan(connectionType)` → plugin → `PrinterManager.scan()` → liệt kê `PrinterDevice[]` (vendorId/productId/name cho USB, IP cho LAN — LAN chỉ trên Android).
 - **Driver suggestion**: sau khi chọn 1 device, `PrinterFactory` tra vendorId/productId theo bảng ở mục 5 → gợi ý driver; không match → fallback `generic-escpos`.
 - **Connect**: `connect(config)` → lưu config → cập nhật status.
-- **Test Print**: build 1 bill mẫu cứng (không phụ thuộc Order module, xem mẫu trong [`docs/specs/project.md`](../../specs/project.md) mục Test Print) → gửi qua Driver → (Connection nếu có).
+- **Test Print**: build 1 bill mẫu cứng (không phụ thuộc Order module, xem mẫu trong [`docs/project.md`](../../project.md) mục Test Print) → gửi qua Driver → (Connection nếu có).
 - **Persist config**: Web dùng `localStorage`; Android dùng Preferences/DataStore (quyết định cụ thể ở implementation plan).
 - **Auto Connect**: khi app khởi động, nếu `autoConnect = true` trong config đã lưu, thử `connect()` lại với device đã lưu; lỗi thì set status `error`, không throw chặn UI.
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-**NDTCore.POS chưa có code** — repo hiện chỉ có spec design tại [`docs/specs/project.md`](docs/specs/project.md). Chưa có build system, package.json, hay source code nào được khởi tạo. Khi bắt đầu implement, cập nhật file này với các lệnh build/lint/test thực tế.
+**NDTCore.POS chưa có code** — repo hiện chỉ có spec design tại [`docs/project.md`](docs/project.md). Chưa có build system, package.json, hay source code nào được khởi tạo. Khi bắt đầu implement, cập nhật file này với các lệnh build/lint/test thực tế.
 
 ## Project Summary
 
@@ -23,7 +23,7 @@ Mục tiêu cốt lõi: tích hợp với nhiều loại máy in hóa đơn (nhi
 
 ## Architecture
 
-Luồng phân tầng cho tích hợp máy in (chi tiết: [`docs/specs/project.md`](docs/specs/project.md)):
+Luồng phân tầng cho tích hợp máy in (chi tiết: [`docs/project.md`](docs/project.md)):
 
 ```
 Vue + Vuetify
@@ -48,4 +48,4 @@ Cấu hình máy in (driver, connection type, selected device, auto connect) lư
 - **Phase 1 — Printer Integration**: hạ tầng phát hiện/cấu hình/kết nối/test in trên cả Web và Android. Không bao gồm nghiệp vụ bán hàng.
 - **Phase 2 — POS System**: sales screen, cart, payment, receipt, order management, shift, customer, promotion, sync, reports — xây trên hạ tầng máy in đã hoàn thiện ở Phase 1.
 
-Chi tiết đầy đủ từng phase: [`docs/specs/project.md`](docs/specs/project.md).
+Chi tiết đầy đủ từng phase: [`docs/project.md`](docs/project.md).
