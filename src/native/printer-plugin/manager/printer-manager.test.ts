@@ -112,4 +112,15 @@ describe('PrinterManager', () => {
     )
     expect(manager.getStatus('receipt-printer')).toBe('disconnected')
   })
+
+  it('disconnect() clears the session (getStatus reports disconnected) even when the connection\'s disconnect() rejects', async () => {
+    const { manager, createdConnections } = buildManager()
+    await manager.connect('receipt-printer', baseConfig)
+    createdConnections[0].disconnect = async () => {
+      throw new Error('device unplugged')
+    }
+
+    await expect(manager.disconnect('receipt-printer')).rejects.toThrow('device unplugged')
+    expect(manager.getStatus('receipt-printer')).toBe('disconnected')
+  })
 })

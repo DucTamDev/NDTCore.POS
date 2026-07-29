@@ -53,9 +53,13 @@ export class PrinterManager {
   }
 
   async disconnect(printerId: string): Promise<void> {
+    // Delete from the map before awaiting disconnect() — a rejecting disconnect() (e.g. the
+    // USB device was physically unplugged) must not leave the session stuck as 'connected'
+    // forever. Matches the Kotlin PrinterManager's `sessions.remove(printerId)?...disconnect()`
+    // ordering.
     const session = this.sessions.get(printerId)
-    await session?.connection.disconnect()
     this.sessions.delete(printerId)
+    await session?.connection.disconnect()
   }
 
   async print(printerId: string, data: Uint8Array): Promise<void> {
