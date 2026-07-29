@@ -131,7 +131,15 @@ class PrinterPlugin : Plugin() {
             val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
             val vendorId = device.getInteger("vendorId")
             val productId = device.getInteger("productId")
-            val usbDevice = usbManager.deviceList.values.find {
+            val serialNumber = device.getString("serialNumber")
+            // Mirrors UsbConnection.connect(): two identical-model printers share the same
+            // vendorId/productId, so a serial-number match (when present) must win over the
+            // vendorId+productId fallback — otherwise this permission pre-check could request
+            // (and grant) permission for the wrong physical device before finishConnect() even
+            // runs its own serial-aware lookup.
+            val usbDevice = (serialNumber?.let { serial ->
+                usbManager.deviceList.values.find { it.serialNumber == serial }
+            }) ?: usbManager.deviceList.values.find {
                 it.vendorId == vendorId && it.productId == productId
             }
 
