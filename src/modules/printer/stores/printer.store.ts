@@ -27,9 +27,7 @@ export const usePrinterStore = defineStore('printer', {
     },
 
     async removePrinter(id: string): Promise<void> {
-      if (this.statuses[id] === 'connected') {
-        await this.disconnect(id)
-      }
+      await this.disconnect(id).catch(() => {})
       this.printers = this.printers.filter((printer) => printer.id !== id)
       delete this.statuses[id]
       delete this.errorMessages[id]
@@ -59,10 +57,12 @@ export const usePrinterStore = defineStore('printer', {
       this.errorMessages[id] = null
       try {
         const result = await Printer.connect({ printerId: id, config: printer })
+        if (!this.printers.some((p) => p.id === id)) return
         Object.assign(printer, result.config)
         this.statuses[id] = 'connected'
         await Printer.savePrinters({ configs: this.printers })
       } catch (error) {
+        if (!this.printers.some((p) => p.id === id)) throw error
         this.statuses[id] = 'error'
         this.errorMessages[id] = error instanceof Error ? error.message : 'Đã có lỗi xảy ra.'
         throw error

@@ -112,4 +112,45 @@ describe('usePrinterStore', () => {
     expect(Printer.connect).toHaveBeenCalledWith({ printerId: 'receipt-printer', config: receiptPrinter })
     expect(store.statuses['receipt-printer']).toBe('error')
   })
+
+  it('does not resurrect printer state when connect() completes after removePrinter() is called', async () => {
+    const store = usePrinterStore()
+    store.printers = [receiptPrinter]
+
+    let resolvePrinterConnect: ((value: { config: PrinterConfig }) => void) | null = null
+    let rejectPrinterConnect: ((reason?: any) => void) | null = null
+
+    vi.mocked(Printer.connect).mockImplementation(
+      () =>
+        new Promise((resolve, reject) => {
+          resolvePrinterConnect = resolve
+          rejectPrinterConnect = reject
+        })
+    )
+    vi.mocked(Printer.disconnect).mockResolvedValue(undefined)
+
+    // Start connect but don't await
+    const connectPromise = store.connect('receipt-printer')
+
+    // Remove printer while connect is still pending
+    await store.removePrinter('receipt-printer')
+
+    // Verify disconnect was called
+    expect(Printer.disconnect).toHaveBeenCalledWith({ printerId: 'receipt-printer' })
+
+    // Verify printer is gone from list and state is clean
+    expect(store.printers).toEqual([])
+    expect(store.statuses['receipt-printer']).toBeUndefined()
+
+    // Now resolve the pending connect
+    resolvePrinterConnect!({ config: receiptPrinter })
+
+    // Let connect complete
+    await connectPromise.catch(() => {})
+
+    // Verify printer state remains gone (not resurrected)
+    expect(store.printers).toEqual([])
+    expect(store.statuses['receipt-printer']).toBeUndefined()
+    expect(store.errorMessages['receipt-printer']).toBeUndefined()
+  })
 })
