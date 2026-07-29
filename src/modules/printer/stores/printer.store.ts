@@ -57,7 +57,14 @@ export const usePrinterStore = defineStore('printer', {
       this.errorMessages[id] = null
       try {
         const result = await Printer.connect({ printerId: id, config: printer })
-        if (!this.printers.some((p) => p.id === id)) return
+        if (!this.printers.some((p) => p.id === id)) {
+          // removePrinter() ran while connect() was in flight — it called Printer.disconnect()
+          // before this native session existed (a no-op then), so the session that JUST got
+          // created above is otherwise orphaned (an open USBDevice with a claimed interface that
+          // nothing can ever call disconnect() on again). Tear it down immediately.
+          await Printer.disconnect({ printerId: id }).catch(() => {})
+          return
+        }
         Object.assign(printer, result.config)
         this.statuses[id] = 'connected'
         await Printer.savePrinters({ configs: this.printers })

@@ -153,4 +153,35 @@ describe('usePrinterStore', () => {
     expect(store.statuses['receipt-printer']).toBeUndefined()
     expect(store.errorMessages['receipt-printer']).toBeUndefined()
   })
+
+  it('tears down the native session Printer.connect() just created when removePrinter() already ran during the in-flight connect()', async () => {
+    const store = usePrinterStore()
+    store.printers = [receiptPrinter]
+
+    let resolvePrinterConnect: ((value: { config: PrinterConfig }) => void) | null = null
+
+    vi.mocked(Printer.connect).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvePrinterConnect = resolve
+        })
+    )
+    vi.mocked(Printer.disconnect).mockResolvedValue(undefined)
+
+    const connectPromise = store.connect('receipt-printer')
+
+    // removePrinter() finds no session yet (Printer.connect hasn't resolved), so its own
+    // Printer.disconnect() call is a no-op on the native side — but it still clears store state.
+    await store.removePrinter('receipt-printer')
+    expect(Printer.disconnect).toHaveBeenCalledTimes(1)
+
+    // Printer.connect() now resolves — the native session is created AFTER removal.
+    resolvePrinterConnect!({ config: receiptPrinter })
+    await connectPromise
+
+    // connect()'s success-path guard must detect the printer is gone and tear down the
+    // just-created session itself — a second disconnect() call for the same id.
+    expect(Printer.disconnect).toHaveBeenCalledTimes(2)
+    expect(Printer.disconnect).toHaveBeenNthCalledWith(2, { printerId: 'receipt-printer' })
+  })
 })
