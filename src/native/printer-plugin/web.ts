@@ -10,7 +10,7 @@ import { GenericEscPosDriver } from './drivers/generic-escpos.driver'
 import { UsbConnection } from './connections/usb-connection'
 import { PrinterManager } from './manager/printer-manager'
 
-const STORAGE_KEY = 'ndtcore_pos_printer_config'
+const STORAGE_KEY = 'ndtcore_pos_printers'
 
 const driverRegistry = new DriverRegistry()
 driverRegistry.register('generic-escpos', () => new GenericEscPosDriver())
@@ -26,33 +26,33 @@ export class PrinterWeb extends WebPlugin implements PrinterPluginInterface {
     return { devices }
   }
 
-  async connect(options: { config: PrinterConfig }) {
-    const config = await manager.connect(options.config)
+  async connect(options: { printerId: string; config: PrinterConfig }) {
+    const config = await manager.connect(options.printerId, options.config)
     return { config }
   }
 
-  async disconnect() {
-    await manager.disconnect()
+  async disconnect(options: { printerId: string }) {
+    await manager.disconnect(options.printerId)
   }
 
-  async print(options: { data: number[] }) {
-    await manager.print(new Uint8Array(options.data))
+  async print(options: { printerId: string; data: number[] }) {
+    await manager.print(options.printerId, new Uint8Array(options.data))
   }
 
-  async testPrint() {
-    await manager.testPrint()
+  async testPrint(options: { printerId: string }) {
+    await manager.testPrint(options.printerId)
   }
 
-  async getStatus() {
-    return { status: manager.getStatus() }
+  async getStatus(options: { printerId: string }) {
+    return { status: manager.getStatus(options.printerId) }
   }
 
-  async saveConfig(options: { config: PrinterConfig }) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(options.config))
+  async savePrinters(options: { configs: PrinterConfig[] }) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(options.configs))
   }
 
-  async loadConfig() {
+  async loadPrinters() {
     const raw = localStorage.getItem(STORAGE_KEY)
-    return { config: raw ? (JSON.parse(raw) as PrinterConfig) : null }
+    return { configs: raw ? (JSON.parse(raw) as PrinterConfig[]) : [] }
   }
 }

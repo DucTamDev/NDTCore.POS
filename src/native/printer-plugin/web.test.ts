@@ -7,30 +7,42 @@ describe('PrinterWeb config persistence', () => {
     localStorage.clear()
   })
 
-  it('loadConfig() returns null when nothing has been saved', async () => {
+  it('loadPrinters() returns an empty array when nothing has been saved', async () => {
     const plugin = new PrinterWeb()
-    const { config } = await plugin.loadConfig()
-    expect(config).toBeNull()
+    const { configs } = await plugin.loadPrinters()
+    expect(configs).toEqual([])
   })
 
-  it('saveConfig() then loadConfig() round-trips the config', async () => {
+  it('savePrinters() then loadPrinters() round-trips the full list', async () => {
     const plugin = new PrinterWeb()
-    const config: PrinterConfig = {
-      driver: 'generic-escpos',
-      connectionType: 'usb',
-      device: null,
-      autoConnect: true,
-    }
+    const configs: PrinterConfig[] = [
+      {
+        id: 'receipt-printer',
+        name: 'Máy in Bill',
+        driver: 'generic-escpos',
+        connectionType: 'usb',
+        device: null,
+        autoConnect: true,
+      },
+      {
+        id: 'kitchen-printer',
+        name: 'Máy in Bếp',
+        driver: 'generic-escpos',
+        connectionType: 'usb',
+        device: null,
+        autoConnect: false,
+      },
+    ]
 
-    await plugin.saveConfig({ config })
-    const { config: loaded } = await plugin.loadConfig()
+    await plugin.savePrinters({ configs })
+    const { configs: loaded } = await plugin.loadPrinters()
 
-    expect(loaded).toEqual(config)
+    expect(loaded).toEqual(configs)
   })
 
-  it('getStatus() starts as disconnected', async () => {
+  it('getStatus() returns disconnected for a printerId with no active session', async () => {
     const plugin = new PrinterWeb()
-    const { status } = await plugin.getStatus()
+    const { status } = await plugin.getStatus({ printerId: 'receipt-printer' })
     expect(status).toBe('disconnected')
   })
 })

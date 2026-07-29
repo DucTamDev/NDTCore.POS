@@ -21,6 +21,8 @@ export interface LanPrinterDevice {
 export type PrinterDevice = UsbPrinterDevice | LanPrinterDevice
 
 export interface PrinterConfig {
+  id: string
+  name: string
   driver: PrinterDriverType
   connectionType: PrinterConnectionType
   device: PrinterDevice | null
@@ -29,11 +31,11 @@ export interface PrinterConfig {
 
 export interface PrinterPlugin {
   scanPrinters(options: { connectionType: PrinterConnectionType }): Promise<{ devices: PrinterDevice[] }>
-  connect(options: { config: PrinterConfig }): Promise<{ config: PrinterConfig }>
-  disconnect(): Promise<void>
-  print(options: { data: number[] }): Promise<void>
-  testPrint(): Promise<void>
-  getStatus(): Promise<{ status: PrinterStatus }>
-  saveConfig(options: { config: PrinterConfig }): Promise<void>
-  loadConfig(): Promise<{ config: PrinterConfig | null }>
+  connect(options: { printerId: string; config: PrinterConfig }): Promise<{ config: PrinterConfig }>
+  disconnect(options: { printerId: string }): Promise<void>
+  print(options: { printerId: string; data: number[] }): Promise<void>
+  testPrint(options: { printerId: string }): Promise<void>
+  getStatus(options: { printerId: string }): Promise<{ status: PrinterStatus }>
+  savePrinters(options: { configs: PrinterConfig[] }): Promise<void>
+  loadPrinters(): Promise<{ configs: PrinterConfig[] }>
 }
