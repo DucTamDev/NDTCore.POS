@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
+import androidx.core.content.ContextCompat
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
@@ -22,6 +23,8 @@ import com.ndtcore.pos.printer.driver.GenericEscPosDriver
 import com.ndtcore.pos.printer.manager.PrinterManager
 import com.ndtcore.pos.printer.registry.ConnectionRegistry
 import com.ndtcore.pos.printer.registry.DriverRegistry
+import org.json.JSONObject
+import java.io.IOException
 
 private const val ACTION_USB_PERMISSION = "com.ndtcore.pos.USB_PERMISSION"
 private const val PREFS_NAME = "ndtcore_pos_printer_config"
@@ -49,7 +52,19 @@ class PrinterPlugin : Plugin() {
         }
         manager = PrinterManager(driverRegistry, connectionRegistry)
 
-        context.registerReceiver(usbPermissionReceiver, IntentFilter(ACTION_USB_PERMISSION))
+        // Android 13+ (targetSdk 36 here) requires an explicit exported flag for any receiver
+        // registered for a non-system broadcast, or registerReceiver() throws SecurityException
+        // immediately. ContextCompat handles the pre-33 vs 33+ split (minSdk is 24).
+        ContextCompat.registerReceiver(
+            context,
+            usbPermissionReceiver,
+            IntentFilter(ACTION_USB_PERMISSION),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+    }
+
+    override fun handleOnDestroy() {
+        context.unregisterReceiver(usbPermissionReceiver)
     }
 
     private val usbPermissionReceiver = object : BroadcastReceiver() {
@@ -83,8 +98,8 @@ class PrinterPlugin : Plugin() {
                 json.put("connectionType", "usb")
                 json.put("vendorId", device.vendorId)
                 json.put("productId", device.productId)
-                json.put("productName", device.productName)
-                json.put("serialNumber", null)
+                json.put("productName", device.productName ?: JSONObject.NULL)
+                json.put("serialNumber", JSONObject.NULL)
                 json.put("suggestedDriver", DriverDetector.suggestDriver(device.vendorId))
                 devices.put(json)
             }
@@ -150,7 +165,18 @@ class PrinterPlugin : Plugin() {
             result.put("config", config)
             call.resolve(result)
         } catch (error: Exception) {
-            call.reject(error.message, error)
+            // UsbConnection/PrinterManager already throw IllegalStateException with a
+            // Vietnamese message. LanConnection lets java.net.* exceptions (ConnectException,
+            // SocketTimeoutException, UnknownHostException — all IOException) propagate
+            // unwrapped with untranslated English messages, so translate those here instead
+            // of leaking them to the UI.
+            if (error is IllegalStateException) {
+                call.reject(error.message, error)
+            } else if (error is IOException) {
+                call.reject("Không thể kết nối tới máy in qua mạng LAN.", error)
+            } else {
+                call.reject(error.message, error)
+            }
         }
     }
 
