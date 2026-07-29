@@ -8,49 +8,45 @@ import com.ndtcore.pos.printer.registry.DriverRegistry
 
 enum class PrinterStatus { DISCONNECTED, CONNECTING, CONNECTED, ERROR }
 
+private data class PrinterSession(val driver: PrinterDriver, val connection: PrinterConnection)
+
 class PrinterManager(
     private val driverRegistry: DriverRegistry,
     private val connectionRegistry: ConnectionRegistry,
 ) {
-    private var currentDriver: PrinterDriver? = null
-    private var currentConnection: PrinterConnection? = null
+    private val sessions = mutableMapOf<String, PrinterSession>()
 
-    var status: PrinterStatus = PrinterStatus.DISCONNECTED
-        private set
-
-    fun connect(driverType: String, connectionType: String, target: ConnectionTarget) {
-        status = PrinterStatus.CONNECTING
+    fun connect(printerId: String, driverType: String, connectionType: String, target: ConnectionTarget) {
         try {
-            val driver = driverRegistry.resolve(driverType)
-            val connection = connectionRegistry.resolve(connectionType)
-            connection.connect(target)
-
-            currentDriver = driver
-            currentConnection = connection
-            status = PrinterStatus.CONNECTED
-        } catch (error: Exception) {
-            status = PrinterStatus.ERROR
-            throw error
+            // Reconnecting the same printerId (including retries) always tears down the
+            // previous session first — this is the Task 19 resource-leak fix. A failed
+            // disconnect on the stale connection must not block reconnecting.
+            sessions.remove(printerId)?.connection?.disconnect()
+        } catch (_: Exception) {
         }
+
+        val driver = driverRegistry.resolve(driverType)
+        val connection = connectionRegistry.resolve(connectionType)
+        connection.connect(target)
+
+        sessions[printerId] = PrinterSession(driver, connection)
     }
 
-    fun disconnect() {
-        currentConnection?.disconnect()
-        currentConnection = null
-        currentDriver = null
-        status = PrinterStatus.DISCONNECTED
+    fun disconnect(printerId: String) {
+        sessions.remove(printerId)?.connection?.disconnect()
     }
 
-    fun print(data: ByteArray) {
-        val connection = currentConnection
-        if (connection == null || status != PrinterStatus.CONNECTED) {
-            throw IllegalStateException("Chưa kết nối máy in.")
-        }
-        connection.write(data)
+    fun print(printerId: String, data: ByteArray) {
+        val session = sessions[printerId] ?: throw IllegalStateException("Chưa kết nối máy in.")
+        session.connection.write(data)
     }
 
-    fun testPrint() {
-        val driver = currentDriver ?: throw IllegalStateException("Chưa chọn driver máy in.")
-        print(driver.buildTestPrintBytes())
+    fun testPrint(printerId: String) {
+        val session = sessions[printerId] ?: throw IllegalStateException("Chưa kết nối máy in.")
+        print(printerId, session.driver.buildTestPrintBytes())
+    }
+
+    fun getStatus(printerId: String): PrinterStatus {
+        return if (sessions.containsKey(printerId)) PrinterStatus.CONNECTED else PrinterStatus.DISCONNECTED
     }
 }
