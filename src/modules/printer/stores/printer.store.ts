@@ -9,14 +9,38 @@ import type {
 
 export const usePrinterStore = defineStore('printer', {
   state: () => ({
-    status: 'disconnected' as PrinterStatus,
-    config: null as PrinterConfig | null,
+    printers: [] as PrinterConfig[],
+    statuses: {} as Record<string, PrinterStatus>,
+    errorMessages: {} as Record<string, string | null>,
     knownDevices: [] as PrinterDevice[],
   }),
   actions: {
-    async loadConfig(): Promise<void> {
-      const { config } = await Printer.loadConfig()
-      this.config = config
+    async loadPrinters(): Promise<void> {
+      const { configs } = await Printer.loadPrinters()
+      this.printers = configs
+    },
+
+    async addPrinter(input: Omit<PrinterConfig, 'id'>): Promise<void> {
+      const printer: PrinterConfig = { ...input, id: crypto.randomUUID() }
+      this.printers.push(printer)
+      await Printer.savePrinters({ configs: this.printers })
+    },
+
+    async removePrinter(id: string): Promise<void> {
+      if (this.statuses[id] === 'connected') {
+        await this.disconnect(id)
+      }
+      this.printers = this.printers.filter((printer) => printer.id !== id)
+      delete this.statuses[id]
+      delete this.errorMessages[id]
+      await Printer.savePrinters({ configs: this.printers })
+    },
+
+    async renamePrinter(id: string, name: string): Promise<void> {
+      const printer = this.printers.find((p) => p.id === id)
+      if (!printer) return
+      printer.name = name
+      await Printer.savePrinters({ configs: this.printers })
     },
 
     async scan(connectionType: PrinterConnectionType): Promise<PrinterDevice[]> {
@@ -25,26 +49,38 @@ export const usePrinterStore = defineStore('printer', {
       return devices
     },
 
-    async connect(config: PrinterConfig): Promise<void> {
-      this.status = 'connecting'
+    async connect(id: string): Promise<void> {
+      const printer = this.printers.find((p) => p.id === id)
+      if (!printer) {
+        throw new Error(`Không tìm thấy cấu hình máy in với id "${id}".`)
+      }
+
+      this.statuses[id] = 'connecting'
+      this.errorMessages[id] = null
       try {
-        const result = await Printer.connect({ config })
-        this.config = result.config
-        this.status = 'connected'
-        await Printer.saveConfig({ config: result.config })
+        const result = await Printer.connect({ printerId: id, config: printer })
+        Object.assign(printer, result.config)
+        this.statuses[id] = 'connected'
+        await Printer.savePrinters({ configs: this.printers })
       } catch (error) {
-        this.status = 'error'
+        this.statuses[id] = 'error'
+        this.errorMessages[id] = error instanceof Error ? error.message : 'Đã có lỗi xảy ra.'
         throw error
       }
     },
 
-    async disconnect(): Promise<void> {
-      await Printer.disconnect()
-      this.status = 'disconnected'
+    async disconnect(id: string): Promise<void> {
+      await Printer.disconnect({ printerId: id })
+      this.statuses[id] = 'disconnected'
     },
 
-    async testPrint(): Promise<void> {
-      await Printer.testPrint()
+    async testPrint(id: string): Promise<void> {
+      await Printer.testPrint({ printerId: id })
+    },
+
+    async autoConnectAll(): Promise<void> {
+      const autoConnectPrinters = this.printers.filter((printer) => printer.autoConnect)
+      await Promise.allSettled(autoConnectPrinters.map((printer) => this.connect(printer.id)))
     },
   },
 })

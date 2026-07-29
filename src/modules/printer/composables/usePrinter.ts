@@ -3,13 +3,17 @@ import { usePrinterStore } from '../stores/printer.store'
 
 export function usePrinter() {
   const store = usePrinterStore()
-  const { status, config, knownDevices } = storeToRefs(store)
+  const { printers, statuses, errorMessages, knownDevices } = storeToRefs(store)
 
   return {
-    status,
-    config,
+    printers,
+    statuses,
+    errorMessages,
     knownDevices,
-    loadConfig: store.loadConfig,
+    loadPrinters: store.loadPrinters,
+    addPrinter: store.addPrinter,
+    removePrinter: store.removePrinter,
+    renamePrinter: store.renamePrinter,
     scan: store.scan,
     connect: store.connect,
     disconnect: store.disconnect,

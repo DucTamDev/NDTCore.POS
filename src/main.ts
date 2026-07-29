@@ -14,16 +14,8 @@ app.use(vuetify)
 
 async function bootstrap() {
   const printerStore = usePrinterStore()
-  await printerStore.loadConfig()
-
-  if (printerStore.config?.autoConnect) {
-    try {
-      await printerStore.connect(printerStore.config)
-    } catch {
-      // Auto-connect failure must not block app startup — user can retry manually
-      // from Printer Settings; status is already 'error' via the store action.
-    }
-  }
+  await printerStore.loadPrinters()
+  await printerStore.autoConnectAll()
 
   app.mount('#app')
 }
