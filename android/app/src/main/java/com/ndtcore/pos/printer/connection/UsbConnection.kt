@@ -18,7 +18,12 @@ class UsbConnection(private val context: Context) : PrinterConnection {
         require(target is ConnectionTarget.Usb) { "UsbConnection chỉ nhận ConnectionTarget.Usb." }
 
         val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
-        val device = usbManager.deviceList.values.find {
+        // Two identical-model printers share the same vendorId/productId, so a serial-number
+        // match (when the target has one) must win over the vendorId+productId fallback —
+        // otherwise the map iterator could bind either physical device to either printerId.
+        val device = (target.serialNumber?.let { serial ->
+            usbManager.deviceList.values.find { it.serialNumber == serial }
+        }) ?: usbManager.deviceList.values.find {
             it.vendorId == target.vendorId && it.productId == target.productId
         } ?: throw IllegalStateException(
             "Không tìm thấy thiết bị USB vendorId=${target.vendorId} productId=${target.productId}.",

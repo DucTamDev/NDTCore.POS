@@ -99,7 +99,13 @@ class PrinterPlugin : Plugin() {
                 json.put("vendorId", device.vendorId)
                 json.put("productId", device.productId)
                 json.put("productName", device.productName ?: JSONObject.NULL)
-                json.put("serialNumber", JSONObject.NULL)
+                // getSerialNumber() requires the app already hold permission for this device
+                // (returns null otherwise before permission is granted), and many low-cost
+                // thermal printers don't expose a USB serial descriptor at all — the
+                // vendorId+productId fallback in UsbConnection.connect() remains necessary;
+                // this is a best-effort improvement for distinguishing identical-model
+                // printers, not a guarantee.
+                json.put("serialNumber", device.serialNumber ?: JSONObject.NULL)
                 json.put("suggestedDriver", DriverDetector.suggestDriver(device.vendorId))
                 devices.put(json)
             }
@@ -131,10 +137,14 @@ class PrinterPlugin : Plugin() {
 
             if (usbDevice != null && !usbManager.hasPermission(usbDevice)) {
                 pendingUsbPermission = PendingUsbPermission(printerId, call)
+                // Since API 34, a mutable PendingIntent wrapping an implicit Intent (no
+                // package/component) throws IllegalArgumentException at construction, and
+                // UsbManager.requestPermission requires the intent be mutable — so FLAG_IMMUTABLE
+                // is not an option. Setting the package makes the intent explicit instead.
                 val permissionIntent = PendingIntent.getBroadcast(
                     context,
                     0,
-                    Intent(ACTION_USB_PERMISSION),
+                    Intent(ACTION_USB_PERMISSION).setPackage(context.packageName),
                     PendingIntent.FLAG_MUTABLE,
                 )
                 usbManager.requestPermission(usbDevice, permissionIntent)
@@ -146,13 +156,38 @@ class PrinterPlugin : Plugin() {
     }
 
     private fun finishConnect(printerId: String, config: JSObject, call: PluginCall) {
-        val driverType = config.getString("driver")!!
-        val connectionType = config.getString("connectionType")!!
+        val driverType = config.getString("driver")
+        val connectionType = config.getString("connectionType")
+        if (driverType == null || connectionType == null) {
+            call.reject("Thiếu tham số driver hoặc connectionType trong config.")
+            return
+        }
+
         val device = config.getJSObject("device")
+        if ((connectionType == "usb" || connectionType == "lan") && device == null) {
+            call.reject("Thiếu thông tin thiết bị (device) trong config.")
+            return
+        }
 
         val target = when (connectionType) {
-            "usb" -> ConnectionTarget.Usb(device!!.getInteger("vendorId")!!, device.getInteger("productId")!!)
-            "lan" -> ConnectionTarget.Lan(device!!.getString("ip")!!, device.getInteger("port")!!)
+            "usb" -> {
+                val vendorId = device?.getInteger("vendorId")
+                val productId = device?.getInteger("productId")
+                if (vendorId == null || productId == null) {
+                    call.reject("Thiếu vendorId hoặc productId của thiết bị USB.")
+                    return
+                }
+                ConnectionTarget.Usb(vendorId, productId, device.getString("serialNumber"))
+            }
+            "lan" -> {
+                val ip = device?.getString("ip")
+                val port = device?.getInteger("port")
+                if (ip == null || port == null) {
+                    call.reject("Thiếu ip hoặc port của thiết bị LAN.")
+                    return
+                }
+                ConnectionTarget.Lan(ip, port)
+            }
             else -> {
                 call.reject("connectionType \"$connectionType\" không được hỗ trợ trên Android.")
                 return
@@ -165,18 +200,21 @@ class PrinterPlugin : Plugin() {
             result.put("config", config)
             call.resolve(result)
         } catch (error: Exception) {
-            // UsbConnection/PrinterManager already throw IllegalStateException with a
-            // Vietnamese message. LanConnection lets java.net.* exceptions (ConnectException,
-            // SocketTimeoutException, UnknownHostException — all IOException) propagate
-            // unwrapped with untranslated English messages, so translate those here instead
-            // of leaking them to the UI.
-            if (error is IllegalStateException) {
-                call.reject(error.message, error)
-            } else if (error is IOException) {
-                call.reject("Không thể kết nối tới máy in qua mạng LAN.", error)
-            } else {
-                call.reject(error.message, error)
-            }
+            rejectTranslated(call, error)
+        }
+    }
+
+    // UsbConnection/PrinterManager already throw IllegalStateException with a Vietnamese
+    // message. LanConnection lets java.net.* exceptions (ConnectException, SocketTimeoutException,
+    // UnknownHostException — all IOException) propagate unwrapped with untranslated English
+    // messages, so translate those here instead of leaking them to the UI. Shared by connect,
+    // print, and testPrint — a printer dropping mid-print (paper jam, power-cycle, LAN hiccup)
+    // hits this same IOException path just as often as connect() failing outright.
+    private fun rejectTranslated(call: PluginCall, error: Exception) {
+        if (error is IOException) {
+            call.reject("Không thể kết nối tới máy in qua mạng LAN.", error)
+        } else {
+            call.reject(error.message, error)
         }
     }
 
@@ -204,7 +242,7 @@ class PrinterPlugin : Plugin() {
             manager.print(printerId, bytes)
             call.resolve()
         } catch (error: Exception) {
-            call.reject(error.message, error)
+            rejectTranslated(call, error)
         }
     }
 
@@ -219,7 +257,7 @@ class PrinterPlugin : Plugin() {
             manager.testPrint(printerId)
             call.resolve()
         } catch (error: Exception) {
-            call.reject(error.message, error)
+            rejectTranslated(call, error)
         }
     }
 
