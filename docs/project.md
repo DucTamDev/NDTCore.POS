@@ -40,6 +40,16 @@ Kiến trúc được thiết kế theo hướng mở rộng (Extensible Archite
 * Capacitor
 * Android Native Plugin (Kotlin)
 
+**Yêu cầu tối thiểu Android System WebView: Chromium 111+.** Vuetify 3 dùng
+`color-mix()` (yêu cầu Chromium 111+) và CSS Cascade Layers `@layer` (yêu cầu
+Chromium 99+) xuyên suốt CSS theming của nó, với các tham số phụ thuộc CSS
+custom property runtime — không thể hạ cấp (downlevel) bằng build tool
+(Lightning CSS/PostCSS) vì giá trị chỉ tính được lúc chạy trong trình duyệt.
+Trên WebView cũ hơn ngưỡng này, toàn bộ style của Vuetify bị trình duyệt âm
+thầm bỏ qua (trang chỉ còn chữ thô, không CSS). Thiết bị POS thực tế cần đảm
+bảo Android System WebView tự cập nhật qua Play Store, hoặc chạy Android 10+
+với WebView được cập nhật thủ công.
+
 ## Printer Integration
 
 * USB
