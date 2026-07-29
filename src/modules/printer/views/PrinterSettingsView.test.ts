@@ -14,6 +14,15 @@ const receiptPrinter: PrinterConfig = {
   autoConnect: false,
 }
 
+const kitchenPrinter: PrinterConfig = {
+  id: 'kitchen-printer',
+  name: 'Máy in Bếp',
+  driver: 'generic-escpos',
+  connectionType: 'usb',
+  device: null,
+  autoConnect: false,
+}
+
 function mountView(initialState: Record<string, unknown> = {}) {
   return mountWithVuetify(PrinterSettingsView, {
     global: {
@@ -95,5 +104,37 @@ describe('PrinterSettingsView', () => {
     await wrapper.vm.$nextTick()
 
     expect(wrapper.text()).toContain('Chưa kết nối máy in USB.')
+  })
+
+  it('calls store.disconnect(id) with that printer\'s id when its Disconnect button is clicked', async () => {
+    const wrapper = mountView({ printers: [receiptPrinter, kitchenPrinter] })
+    const store = usePrinterStore()
+
+    await wrapper.find('[data-test="disconnect-button-receipt-printer"]').trigger('click')
+
+    expect(store.disconnect).toHaveBeenCalledWith('receipt-printer')
+    expect(store.disconnect).not.toHaveBeenCalledWith('kitchen-printer')
+  })
+
+  it('calls store.removePrinter(id) with that printer\'s id when its Remove button is clicked', async () => {
+    const wrapper = mountView({ printers: [receiptPrinter, kitchenPrinter] })
+    const store = usePrinterStore()
+
+    await wrapper.find('[data-test="remove-button-receipt-printer"]').trigger('click')
+
+    expect(store.removePrinter).toHaveBeenCalledWith('receipt-printer')
+    expect(store.removePrinter).not.toHaveBeenCalledWith('kitchen-printer')
+  })
+
+  it('calls store.renamePrinter(id, name) with that printer\'s id when its name field changes', async () => {
+    const wrapper = mountView({ printers: [receiptPrinter, kitchenPrinter] })
+    const store = usePrinterStore()
+
+    const input = wrapper.find('[data-test="printer-name-receipt-printer"] input')
+    await input.setValue('Máy in Bill Mới')
+    await input.trigger('change')
+
+    expect(store.renamePrinter).toHaveBeenCalledWith('receipt-printer', 'Máy in Bill Mới')
+    expect(store.renamePrinter).not.toHaveBeenCalledWith('kitchen-printer', 'Máy in Bill Mới')
   })
 })
